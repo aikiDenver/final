@@ -12,6 +12,8 @@ var authJwtController = require('./auth_jwt');
 var jwt = require('jsonwebtoken');
 var cors = require('cors');
 var User = require('./Users');
+var Movie = require('./Movies');
+
 
 var app = express();
 app.use(cors());
@@ -62,6 +64,7 @@ router.post('/signup', function(req, res) {
     }
 });
 
+
 router.post('/signin', function (req, res) {
     var userNew = new User();
     userNew.username = req.body.username;
@@ -84,6 +87,176 @@ router.post('/signin', function (req, res) {
         })
     })
 });
+
+
+router.route('/movies')
+
+    .post(authJwtController.isAuthenticated,function (req, res) {
+        //register a movie from the user input
+            //check if the all info is there -> not give error
+            if (!req.body.title || !req.body.year || !req.body.genre || !req.body.actors) {
+                res.json({success: false, msg: 'Please include all the information of movie.'})
+            }
+            else {
+                if(req.body.actors.length<3){
+                    //check if there are at least 3 actors info
+                    res.json({success:false, msg:'Please input at least 3 actor/actress.'})
+                }else{
+                    var MovieNew = new Movie();
+                    MovieNew.title = req.body.title;
+                    MovieNew.year = req.body.year;
+                    MovieNew.genre = req.body.genre;
+                    MovieNew.actors = req.body.actors;
+                    MovieNew.id = req.headers.id
+
+                    MovieNew.save(function (err) {
+
+                        if (err) {
+                            if (err.code == 11000)// there are same title exist on database
+                                return res.json({success: false, message: 'A movie with the title already exists.'});
+                            else
+                                return res.json(err);
+                        }
+
+                        res.json({success: true, msg: 'Movie saved!'})
+                })
+                }
+            }
+        })
+
+    .get(authJwtController.isAuthenticated, function(req, res){
+        //should return all the movie
+        Movie.find(function (err,movies){
+            if(err){
+                return res.json(err);
+            }
+            else{
+                res.json(movies);
+            }
+        });
+
+    })
+
+    .put(authJwtController.isAuthenticated, function(req, res) {
+        //find movie by title and modify the information
+        //find movie by title
+        if (!req.body.title) {
+            return res.json({success: false, message: 'Please input name of the movie that you want to modify.'})
+        } else {
+            Movie.findOne({title: req.body.title}).exec(function (err, movie) {
+                if (err) {
+                    res.send(err);
+                }
+                else {
+                    if(movie){
+                        //check if the user input information per variable
+                        if(req.body.year){
+                            movie.year = req.body.year;
+                        }
+                        if(req.body.genre){
+                            movie.genre = req.body.genre;
+                        }
+                        if(req.body.actors){
+                           //check the user input 3 actors
+                            if(req.body.actors.length<3){
+                                return res.json({success:false, msg:'Make sure you input 3 actors.'})
+                            }
+                            movie.actors = req.body.actors;
+                        }
+
+
+                        movie.save(function (err) {
+
+                            if (err) {
+                                    return res.json(err);
+                            }
+
+                            res.json({success: true, msg: 'Movie updated!'})
+                        })
+                    }
+                    else{
+                        return res.json({success:false, msg:'There are no movie matches the title.'})
+                    }
+
+                }
+            });
+        }
+    })
+
+
+    .delete(authJwtController.isAuthenticated, function (req, res) {
+        //use will pick a movie that the user wanna delete
+        if (!req.body.title) {
+            return res.json({success: false, msg: 'Input name of the movie that you would like to delete.'})
+
+        } else {
+
+            /*if(Movie.length<=5){ // the database should have at least 5 movies
+                return res.json({success:false, msg:'Cannot delete. There should be at least 5 movie in the database.'})
+            }*/
+            /*
+                        Movie.findOne({title: req.body.title}).exec(function (err, movie) {
+                            if (err) {
+                                res.send(err);
+                            }
+                            else {
+                                if(movie){
+                                    var id = movie._id
+                                    Movie.remove(id). exec(function(err){
+                                        if(err){
+                                            res.send(err);
+                                        }
+                                        else{
+                                            return res.json({success: true, msg:'Movie deleted.'})
+                                        }
+                                    })
+
+                                }
+
+            */
+
+            Movie.findOneAndDelete({title:req.body.title}, function (err, movie) {
+                if (err) {
+                    res.send(err);
+                }else if(!movie){
+                    return res.json({success: fale, msg:'Cannot find the movie.'})
+                }
+               else {
+                    return res.json({success: true, msg: 'Movie deleted.'})
+                }
+                //delete movie
+            });
+        }
+    }
+
+);
+
+
+/*
+
+router.route('/movies')
+    .post(function (req, res) {
+        //if passed atuhentication
+        var MovieNew = new Movie();
+        MovieNew.title = req.body.title;
+        MovieNew.year = req.body.year;
+        MovieNew.genre = req.body.genre;
+        MovieNew.actors = req.body.actors;
+
+        MovieNew.save(function (err) {
+            if (err) {
+                if (err.code == 11000)
+                    return res.json({success: false, message: 'A movie with the information already exists.'});
+                else
+                    return res.json(err);
+            }
+
+            res.json({success: true, msg: 'movie saved.'})
+
+        })
+    });
+*/
+
 
 app.use('/', router);
 app.listen(process.env.PORT || 8080);

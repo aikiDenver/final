@@ -15,42 +15,57 @@ let login_details = {
 }
 
 describe('Register, Login and Call Test Collection with Basic Auth and JWT Auth', () => {
-   beforeEach((done) => { //Before each test initialize the database to empty
-       //db.userList = [];
-
-       done();
-    })
-
-    after((done) => { //after this test suite empty the database
-        //db.userList = [];
+    before((done) => { //after this test suite empty the database
+//db.userList = [];
         User.deleteOne({ name: 'test'}, function(err, user) {
             if (err) throw err;
+            done();
         });
+    })
+
+    beforeEach((done) => { //Before each test initialize the database to empty
+//db.userList = [];
+
         done();
     })
 
-    //Test the GET route
+    after((done) => { //after this test suite empty the database
+//db.userList = [];
+        User.deleteOne({ name: 'test'}, function(err, user) {
+            if (err) throw err;
+            done();
+        });
+    })
+
+//Test the GET route
     describe('/signup', () => {
         it('it should register, login and check our token', (done) => {
-          chai.request(server)
-              .post('/signup')
-              .send(login_details)
-              .end((err, res) =>{
-                console.log(JSON.stringify(res.body));
-                res.should.have.status(200);
-                res.body.success.should.be.eql(true);
-                //follow-up to get the JWT token
-                chai.request(server)
-                    .post('/signin')
-                    .send(login_details)
-                    .end((err, res) => {
-                        res.should.have.status(200);
-                        res.body.should.have.property('token');
-                        let token = res.body.token;
-                        console.log(token);
-                        done();
-                    })
-              })
+            chai.request(server)
+                .post('/signup')
+                .send(login_details)
+                .end((err, res) =>{
+                    console.log(JSON.stringify(res.body));
+                    res.should.have.status(200);
+                    res.body.success.should.be.eql(true);
+//follow-up to get the JWT token
+                    chai.request(server)
+                        .post('/signin')
+                        .send(login_details)
+                        .end((err, res) => {
+                            res.should.have.status(200);
+                            res.body.should.have.property('token');
+                            let token = res.body.token;
+                            console.log(token);
+                            chai.request(server)
+                                .post('/movies')
+                                .set('Authorization',token)
+                                .send('test')
+                                .end((err,res) => {
+                                    res.should.have.status(200);
+                                    done();
+                                });
+                        })
+                })
         })
     });
 
